@@ -1,4 +1,4 @@
-# TC_comparison
+# TC comparison
 
 Here I evaluate the present and future tropical cyclone damage using different sources of storm tracks in CLIMADA.
 
