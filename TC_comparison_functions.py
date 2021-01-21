@@ -11,7 +11,6 @@ description: Configuration and functions for tropical cyclone (TC) model
 @author: simonameiler
 """
 
-import os
 import csv
 import pickle
 import numpy as np
@@ -37,12 +36,8 @@ from climada.util.coordinates import dist_to_coast
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
         
 #%% ################## Define local folders etc. ##############################
-## define your local folders: (where to get data and save results)
-# directory where TC tracks data is saved:
-DATA_DIR = '/User/simonameiler/Documents/WCR/CLIMADA_DEVELOP/climada_python/data'
-RES_DIR = os.path.join(DATA_DIR, 'results')
 
-# countries by region:
+## countries by region:
 region_ids_cal = {'NA1': ['AIA', 'ATG', 'ARG', 'ABW', 'BHS', 'BRB', 'BLZ', 
                           'BMU', 'BOL', 'CPV', 'CYM', 'CHL', 'COL', 'CRI', 
                           'CUB', 'DMA', 'DOM', 'ECU', 'SLV', 'FLK', 'GUF', 
@@ -85,9 +80,8 @@ region_ids_cal = {'NA1': ['AIA', 'ATG', 'ARG', 'ABW', 'BHS', 'BRB', 'BLZ',
                           'TGO', 'TUN', 'TUR', 'UKR', 'GBR', 'UMI', 'ESH', 
                           'ZMB', 'ALA']}
 
-
-# Define specific data for case study:
-REGION = 'NA' # select 1 of the 4 regions to use here - only naming of files
+# define constants
+REGION = 'AP' # select 1 of the 4 regions to use here - only naming of files
 BASIN = 'global' # IBTrACS ['NA', 'EP', 'NI', 'SI', 'WP', 'SP']
 BASIN_K = 'AP' # basin selection Kerry ['AP', 'IO', 'SH', 'WP']
 BASIN_S = ['EP','NA'] # str or list of basins for STORM tracks
@@ -99,26 +93,24 @@ reg_list = ['NA1','NA2']
 for reg in reg_list:
     cntry_list.extend(region_ids_cal[reg])
 
-ENTITY_DIR = os.path.join(DATA_DIR, 'entity') # where to save exposure data
-ENTITY_STR = "litpop_%04das_%04d_%s.tif"
-CENT_STR = "centroids_%04das_%s.hdf5"
-
-# directory where TC tracks data is saved:
-TRACKS_DIR = os.path.join(DATA_DIR, 'tracks')
-KERRY_DIR = os.path.join(TRACKS_DIR, 'Kerry')
-STORM_DIR = os.path.join(TRACKS_DIR, 'STORM', 'data')
-CHAZ_DIR = os.path.join(TRACKS_DIR, 'CHAZ')
-SYNTH_STR = "TC_tracks_synthetic_%04d-%04d_%s.p"
-KERRY_STR= 'temp_%s_era5_reanalcal.mat'
-CHAZ_STR = "TC_tracks_CHAZ_%s.p"
-STORM_STR = "TC_tracks_STORM_%s.p"
-
-HAZARD_DIR = os.path.join(DATA_DIR, 'hazard') # where to save hazard data
-HAZARD_STR = "TC_%s_%04das_%s.hdf5" # filename for hazard data (will be saved in to this file when code is executed)
-
 REF_YEAR = 2014 # reference year
 RES_ARCSEC = 300 # resolution in arc seconds (best: 30)
 YEAR_RANGE = [1980, 2018]
+    
+# define paths
+ENTITY_STR = SYSTEM_DIR.joinpath(
+    f"litpop_{RES_ARCSEC:04n}as_{REF_YEAR:04n}_global.hdf5")
+CENT_STR = SYSTEM_DIR.joinpath('centroids_%04das_%s.hdf5')
+SYNTH_STR = SYSTEM_DIR.joinpath('tracks','IBTrACS',
+    f"TC_tracks_synthetic_{YEAR_RANGE[0]:04n}-{YEAR_RANGE[1]:04n}_{REGION}.p")
+KERRY_STR= SYSTEM_DIR.joinpath('tracks','Kerry',
+                               f"temp_{REGION}_era5_reanalcal.mat")
+CHAZ_DIR = SYSTEM_DIR.joinpath('tracks','CHAZ')
+CHAZ_STR = CHAZ_DIR.joinpath('TC_tracks_CHAZ_global.p')
+STORM_DIR = SYSTEM_DIR.joinpath('tracks','STORM')
+STORM_STR = STORM_DIR.joinpath(f"TC_tracks_STORM_{REGION}.p")
+HAZARD_DIR = SYSTEM_DIR.joinpath('hazard')
+RES_DIR = SYSTEM_DIR.joinpath('results')
 
 # boolean: load hazard & exposure data from HDF5 file after first creation? (speeds things up)
 load_data_from_hdf5 = True
@@ -148,9 +140,8 @@ dist_cst_lim = 1000000
 
 #%%###################### Define functions ###################################
 
-def init_coastal_litpop(countries, exp_dir, fn_str, res_arcsec = 300, \
-                        ref_year=2014, dist_cst_lim=dist_cst_lim, lat_lim=70, \
-                        save=True, region=REGION):
+def init_coastal_litpop(countries, res_arcsec = 300, ref_year=2014, 
+                        dist_cst_lim=dist_cst_lim, lat_lim=70., save=True):
     
     """Initiates LitPop exposure of all provided countries within a defined 
     distance to coast and extent of lat, lon.
@@ -158,13 +149,11 @@ def init_coastal_litpop(countries, exp_dir, fn_str, res_arcsec = 300, \
     Parameters:
         countries (list, optional): list with ISO3 names of countries, e.g
             ['ZWE', 'GBR', 'VNM', 'UZB']
-        exp_dir (str):
-        fn_str (str):
-        ref_year (float):
-        dist_cst_lim (float):
+        res_arcsec (int)
+        ref_year (int):
+        dist_cst_lim (int):
         lat_lim (float):
         save (boolean):
-        region (str):
         
     Returns:
         DataFrame, hazard.centroids.centr.Centroids
@@ -226,13 +215,12 @@ def init_coastal_litpop(countries, exp_dir, fn_str, res_arcsec = 300, \
     except ValueError:
         print('distance to coast failed, exposure not trimmed')
         exp_coast = exp_litpop
-    with open(os.path.join(exp_dir, 'cntry_fail.txt'), "w") as output:
+    with open(SYSTEM_DIR.joinpath('cntry_fail.txt'), "w") as output:
         output.write(str(fail))
-    with open(os.path.join(exp_dir, 'cntry_success.txt'), "w") as output:
+    with open(SYSTEM_DIR.joinpath('cntry_success.txt'), "w") as output:
         output.write(str(success))
     if save:
-        exp_coast.write_hdf5(os.path.join(exp_dir, fn_str % (res_arcsec, ref_year, region)))
-        print(os.path.join(exp_dir, fn_str % (res_arcsec, ref_year, region)))
+        exp_coast.write_hdf5(ENTITY_STR)
     return exp_coast
 
 def init_centroids_manual(bbox=[-66.5, 66.5, -179.5, 179.5], res_arcsec=3600, \
@@ -254,25 +242,25 @@ def init_centroids_manual(bbox=[-66.5, 66.5, -179.5, 179.5], res_arcsec=3600, \
     cent.check()
     return cent
 
-def init_exposure(countries,exp_dir, exp_fn_str, regs, make_plots=True, res_arcsec=300, ref_year=2014):
+def init_exposure(countries, make_plots=True, res_arcsec=300, ref_year=2014):
 
-    if os.path.isfile(os.path.join(ENTITY_DIR, ENTITY_STR % (RES_ARCSEC, REF_YEAR, regs))):
+    if Path.is_file(ENTITY_STR):
         print("----------------------Loading Exposure----------------------")
         exp_coast = LitPop()
-        exp_coast.read_hdf5(os.path.join(ENTITY_DIR, ENTITY_STR % (RES_ARCSEC, REF_YEAR, regs))) 
+        exp_coast.read_hdf5(ENTITY_STR) 
     else:
         print("----------------------Initiating Exposure-------------------")
-        exp_coast = init_coastal_litpop(countries, exp_dir, exp_fn_str, \
-                                            res_arcsec=res_arcsec, ref_year=ref_year,
-                                            dist_cst_lim=dist_cst_lim, lat_lim=70)
+        exp_coast = init_coastal_litpop(countries, res_arcsec=res_arcsec, 
+                                        ref_year=ref_year, 
+                                        dist_cst_lim=dist_cst_lim, lat_lim=70)
     return exp_coast
 
 
 def init_centroids(exp):
     cent = Centroids()
-    if os.path.isfile(os.path.join(ENTITY_DIR, CENT_STR % (RES_ARCSEC, REGION))):
+    if Path.is_file(CENT_STR):
         print("----------------------Loading Exposure----------------------")
-        cent.read_hdf5(os.path.join(ENTITY_DIR, CENT_STR % (RES_ARCSEC, REGION)))
+        cent.read_hdf5(CENT_STR)
     else:
         cent.set_lat_lon(np.array(exp.latitude), np.array(exp.longitude.values))
         exp[INDICATOR_CENTR] = np.arange(cent.lat.size)
@@ -308,15 +296,16 @@ def init_tc_hazard(tracks, exposure, cent, key, load_haz=False):
     """initiate TC hazard from tracks and exposure"""
      # initiate new instance of TropCyclone(Hazard) class:
     tc_hazard = TropCyclone(pool)
-    if load_haz and os.path.isfile(os.path.join(HAZARD_DIR, HAZARD_STR % (REGION, RES_ARCSEC, key))):
+    haz_str = f"TC_{REGION}_{RES_ARCSEC:04n}as_{key}.hdf5"
+    if load_haz and Path.is_file(HAZARD_DIR.joinpath(haz_str)):
         print("----------------------Loading Hazard----------------------")
-        tc_hazard.read_hdf5(os.path.join(HAZARD_DIR, HAZARD_STR % (REGION, RES_ARCSEC, key)))
+        tc_hazard.read_hdf5(HAZARD_DIR.joinpath(haz_str))
     else:
         print("----------------------Initiating Hazard----------------------")
         # hazard is initiated from tracks, windfield computed:
         tc_hazard.set_from_tracks(tracks, centroids=cent)
         tc_hazard.check()
-        tc_hazard.write_hdf5(os.path.join(HAZARD_DIR, HAZARD_STR % (REGION, RES_ARCSEC, key)))
+        tc_hazard.write_hdf5(HAZARD_DIR.joinpath(haz_str))
     return tc_hazard
 
 # Initiate TC tracks (IBTrACS probabilistic)
@@ -324,8 +313,7 @@ def calc_tracks(data_dir, basin):
     """ Generate synthetic tracks from ibtracs data, if not contained in data_dir.
     This functions is the longest one to execute."""
     try:
-        abs_path = os.path.join(TRACKS_DIR, 'IBTrACS_p', SYNTH_STR %(YEAR_RANGE[0], YEAR_RANGE[1], basin))
-        with open(abs_path, 'rb') as f:
+        with open(SYNTH_STR, 'rb') as f:
             sel_ibtracs = pickle.load(f)
         print('Loaded synthetic tracks:', sel_ibtracs.size)
     except FileNotFoundError:
@@ -348,34 +336,32 @@ def calc_tracks(data_dir, basin):
         print('num tracks hist:', tracks_prob.size)
         tracks_prob.calc_random_walk()
         print('num tracks hist+syn:', tracks_prob.size)
-        save(os.path.join(TRACKS_DIR,  'IBTrACS_p', SYNTH_STR %(YEAR_RANGE[0], YEAR_RANGE[1], basin)), tracks_prob)
+        save(SYNTH_STR, tracks_prob)
     return tracks_prob
 
 # Initiate CHAZ tracks
 def init_CHAZ_tracks():
     """ Load all CHAZ tracks."""
     try:
-        abs_path_CHAZ = os.path.join(CHAZ_DIR, CHAZ_STR %(REGION))
-        with open(abs_path_CHAZ, 'rb') as f:
+        with open(CHAZ_STR, 'rb') as f:
             tracks_CHAZ = pickle.load(f)
         print('Loaded CHAZ tracks:', tracks_CHAZ.size)
     except FileNotFoundError:
         ensembles = [[17], [7], [11], [15], [22], [38], [13], [8], [39], [19]]
         tracks_CHAZ = TCTracks(pool)
         for i_ens, ensemble in enumerate(ensembles):
-           fname = os.path.join(CHAZ_DIR, f"global_new_00{i_ens}.nc")
+           fname = CHAZ_DIR.joinpath(f"global_new_00{i_ens}.nc")
            tr = TCTracks(pool)
            tr.read_simulations_chaz(fname, ensemble_nums=ensemble)
            tracks_CHAZ.append(tr.data)
         tracks_CHAZ.equal_timestep(time_step_h=1)
-        save(os.path.join(CHAZ_DIR, CHAZ_STR %(REGION)), tracks_CHAZ)
+        save(CHAZ_STR, tracks_CHAZ)
     return tracks_CHAZ
 
 def init_STORM_tracks(basin):
     """ Load all STORM tracks for the basin of interest."""
     try:
-        abs_path_STORM = os.path.join(STORM_DIR, STORM_STR %(BASIN_K))
-        with open(abs_path_STORM, 'rb') as f:
+        with open(STORM_STR, 'rb') as f:
             tracks_STORM = pickle.load(f)
         print('Loaded STORM tracks:', tracks_STORM.size)
     except FileNotFoundError:
@@ -385,10 +371,10 @@ def init_STORM_tracks(basin):
         for j in basin:
             fname = lambda i: f"STORM_DATA_IBTRACS_{j}_1000_YEARS_{i}.txt"
             for i in range(10):
-                tracks_STORM.read_simulations_storm(os.path.join(STORM_DIR, fname(i)))
+                tracks_STORM.read_simulations_storm(STORM_DIR.joinpath(fname(i)))
                 all_tracks.extend(tracks_STORM.data)
         tracks_STORM.data = all_tracks
         tracks_STORM.equal_timestep(time_step_h=1.)
-        save(os.path.join(STORM_DIR, STORM_STR %(BASIN_K)), tracks_STORM)
+        save(STORM_STR, tracks_STORM)
     return tracks_STORM
 
