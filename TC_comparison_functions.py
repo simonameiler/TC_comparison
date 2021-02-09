@@ -81,7 +81,7 @@ region_ids_cal = {'NA1': ['AIA', 'ATG', 'ARG', 'ABW', 'BHS', 'BRB', 'BLZ',
                           'ZMB', 'ALA']}
 
 # define constants
-REGION = 'AP' # select 1 of the 4 regions to use here - only naming of files
+REGION = 'global' # select 1 of the 4 regions to use here - only naming of files
 BASIN = 'global' # IBTrACS ['NA', 'EP', 'NI', 'SI', 'WP', 'SP']
 BASIN_K = 'AP' # basin selection Kerry ['AP', 'IO', 'SH', 'WP']
 BASIN_S = ['EP','NA'] # str or list of basins for STORM tracks
@@ -100,7 +100,7 @@ YEAR_RANGE = [1980, 2018]
 # define paths
 ENTITY_STR = SYSTEM_DIR.joinpath(
     f"litpop_{RES_ARCSEC:04n}as_{REF_YEAR:04n}_global.hdf5")
-CENT_STR = SYSTEM_DIR.joinpath('centroids_%04das_%s.hdf5')
+CENT_STR = SYSTEM_DIR.joinpath(f"centroids_{RES_ARCSEC:04n}as_global.hdf5")
 SYNTH_STR = SYSTEM_DIR.joinpath('tracks','IBTrACS',
     f"TC_tracks_synthetic_{YEAR_RANGE[0]:04n}-{YEAR_RANGE[1]:04n}_{REGION}.p")
 KERRY_STR= SYSTEM_DIR.joinpath('tracks','Kerry',
