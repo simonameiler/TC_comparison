@@ -127,7 +127,7 @@ BASIN_BOUNDS = {
     'IO': [40.0, 100.0, 0.0, 40.0],
 
     # Southern Hemisphere Basin
-    'SH': [0.0, 359.0, -60.0, 0.0],
+    'SH': [-180.0, 180.0, -60.0, 0.0],
 
     # Western Pacific Basin
     'WP': [90.0, -120.0, 0.0, 65.0],
